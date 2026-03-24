@@ -322,17 +322,11 @@ func (curve *TwistedEdwardsCurve) ScalarBaseMult(k []byte) (x, y *big.Int) {
 	return curve.ScalarMult(curve.Gx, curve.Gy, k)
 }
 
-// scalarAdd adds two scalars and returns the sum mod N.
+// scalarAdd adds two scalars and returns the sum mod N (group order).
 func scalarAdd(a, b *big.Int) *big.Int {
-	feA := bigIntToFieldElement(a)
-	feB := bigIntToFieldElement(b)
-	sum := new(FieldElement)
-
-	FeAdd(sum, feA, feB)
-	sumArray := new([32]byte)
-	FeToBytes(sumArray, sum)
-
-	return encodedBytesToBigInt(sumArray)
+	sum := new(big.Int).Add(a, b)
+	sum.Mod(sum, Edwards().N)
+	return sum
 }
 
 // initParam25519 initializes an instance of the Ed25519 curve.
@@ -381,9 +375,14 @@ func (curve *TwistedEdwardsCurve) initParam25519() {
 	curve.byteSize = curve.BitSize / 8
 }
 
+var edwardsCurve *TwistedEdwardsCurve
+
+func init() {
+	edwardsCurve = new(TwistedEdwardsCurve)
+	edwardsCurve.initParam25519()
+}
+
 // Edwards returns a Curve which implements Ed25519.
 func Edwards() *TwistedEdwardsCurve {
-	c := new(TwistedEdwardsCurve)
-	c.initParam25519()
-	return c
+	return edwardsCurve
 }

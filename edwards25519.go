@@ -133,92 +133,96 @@ func FeFromBytes(dst *FieldElement, src *[32]byte) {
 //	Have q+2^(-255)x = 2^(-255)(h + 19 2^(-25) h9 + 2^(-1))
 //	so floor(2^(-255)(h + 19 2^(-25) h9 + 2^(-1))) = q.
 func FeToBytes(s *[32]byte, h *FieldElement) {
+	// Work on a copy to avoid mutating the caller's FieldElement.
+	var t FieldElement
+	copy(t[:], h[:])
+
 	var carry [10]int64
 
-	q := (19*h[9] + (1 << 24)) >> 25
-	q = (h[0] + q) >> 26
-	q = (h[1] + q) >> 25
-	q = (h[2] + q) >> 26
-	q = (h[3] + q) >> 25
-	q = (h[4] + q) >> 26
-	q = (h[5] + q) >> 25
-	q = (h[6] + q) >> 26
-	q = (h[7] + q) >> 25
-	q = (h[8] + q) >> 26
-	q = (h[9] + q) >> 25
+	q := (19*t[9] + (1 << 24)) >> 25
+	q = (t[0] + q) >> 26
+	q = (t[1] + q) >> 25
+	q = (t[2] + q) >> 26
+	q = (t[3] + q) >> 25
+	q = (t[4] + q) >> 26
+	q = (t[5] + q) >> 25
+	q = (t[6] + q) >> 26
+	q = (t[7] + q) >> 25
+	q = (t[8] + q) >> 26
+	q = (t[9] + q) >> 25
 
-	// Goal: Output h-(2^255-19)q, which is between 0 and 2^255-20.
-	h[0] += 19 * q
-	// Goal: Output h-2^255 q, which is between 0 and 2^255-20.
+	// Goal: Output t-(2^255-19)q, which is between 0 and 2^255-20.
+	t[0] += 19 * q
+	// Goal: Output t-2^255 q, which is between 0 and 2^255-20.
 
-	carry[0] = h[0] >> 26
-	h[1] += carry[0]
-	h[0] -= carry[0] << 26
-	carry[1] = h[1] >> 25
-	h[2] += carry[1]
-	h[1] -= carry[1] << 25
-	carry[2] = h[2] >> 26
-	h[3] += carry[2]
-	h[2] -= carry[2] << 26
-	carry[3] = h[3] >> 25
-	h[4] += carry[3]
-	h[3] -= carry[3] << 25
-	carry[4] = h[4] >> 26
-	h[5] += carry[4]
-	h[4] -= carry[4] << 26
-	carry[5] = h[5] >> 25
-	h[6] += carry[5]
-	h[5] -= carry[5] << 25
-	carry[6] = h[6] >> 26
-	h[7] += carry[6]
-	h[6] -= carry[6] << 26
-	carry[7] = h[7] >> 25
-	h[8] += carry[7]
-	h[7] -= carry[7] << 25
-	carry[8] = h[8] >> 26
-	h[9] += carry[8]
-	h[8] -= carry[8] << 26
-	carry[9] = h[9] >> 25
-	h[9] -= carry[9] << 25
-	// h10 = carry9
+	carry[0] = t[0] >> 26
+	t[1] += carry[0]
+	t[0] -= carry[0] << 26
+	carry[1] = t[1] >> 25
+	t[2] += carry[1]
+	t[1] -= carry[1] << 25
+	carry[2] = t[2] >> 26
+	t[3] += carry[2]
+	t[2] -= carry[2] << 26
+	carry[3] = t[3] >> 25
+	t[4] += carry[3]
+	t[3] -= carry[3] << 25
+	carry[4] = t[4] >> 26
+	t[5] += carry[4]
+	t[4] -= carry[4] << 26
+	carry[5] = t[5] >> 25
+	t[6] += carry[5]
+	t[5] -= carry[5] << 25
+	carry[6] = t[6] >> 26
+	t[7] += carry[6]
+	t[6] -= carry[6] << 26
+	carry[7] = t[7] >> 25
+	t[8] += carry[7]
+	t[7] -= carry[7] << 25
+	carry[8] = t[8] >> 26
+	t[9] += carry[8]
+	t[8] -= carry[8] << 26
+	carry[9] = t[9] >> 25
+	t[9] -= carry[9] << 25
+	// t10 = carry9
 
-	// Goal: Output h[0]+...+2^255 h10-2^255 q, which is between 0 and 2^255-20.
-	// Have h[0]+...+2^230 h[9] between 0 and 2^255-1;
-	// evidently 2^255 h10-2^255 q = 0.
-	// Goal: Output h[0]+...+2^230 h[9].
+	// Goal: Output t[0]+...+2^255 t10-2^255 q, which is between 0 and 2^255-20.
+	// Have t[0]+...+2^230 t[9] between 0 and 2^255-1;
+	// evidently 2^255 t10-2^255 q = 0.
+	// Goal: Output t[0]+...+2^230 t[9].
 
-	s[0] = byte(h[0] >> 0)
-	s[1] = byte(h[0] >> 8)
-	s[2] = byte(h[0] >> 16)
-	s[3] = byte((h[0] >> 24) | (h[1] << 2))
-	s[4] = byte(h[1] >> 6)
-	s[5] = byte(h[1] >> 14)
-	s[6] = byte((h[1] >> 22) | (h[2] << 3))
-	s[7] = byte(h[2] >> 5)
-	s[8] = byte(h[2] >> 13)
-	s[9] = byte((h[2] >> 21) | (h[3] << 5))
-	s[10] = byte(h[3] >> 3)
-	s[11] = byte(h[3] >> 11)
-	s[12] = byte((h[3] >> 19) | (h[4] << 6))
-	s[13] = byte(h[4] >> 2)
-	s[14] = byte(h[4] >> 10)
-	s[15] = byte(h[4] >> 18)
-	s[16] = byte(h[5] >> 0)
-	s[17] = byte(h[5] >> 8)
-	s[18] = byte(h[5] >> 16)
-	s[19] = byte((h[5] >> 24) | (h[6] << 1))
-	s[20] = byte(h[6] >> 7)
-	s[21] = byte(h[6] >> 15)
-	s[22] = byte((h[6] >> 23) | (h[7] << 3))
-	s[23] = byte(h[7] >> 5)
-	s[24] = byte(h[7] >> 13)
-	s[25] = byte((h[7] >> 21) | (h[8] << 4))
-	s[26] = byte(h[8] >> 4)
-	s[27] = byte(h[8] >> 12)
-	s[28] = byte((h[8] >> 20) | (h[9] << 6))
-	s[29] = byte(h[9] >> 2)
-	s[30] = byte(h[9] >> 10)
-	s[31] = byte(h[9] >> 18)
+	s[0] = byte(t[0] >> 0)
+	s[1] = byte(t[0] >> 8)
+	s[2] = byte(t[0] >> 16)
+	s[3] = byte((t[0] >> 24) | (t[1] << 2))
+	s[4] = byte(t[1] >> 6)
+	s[5] = byte(t[1] >> 14)
+	s[6] = byte((t[1] >> 22) | (t[2] << 3))
+	s[7] = byte(t[2] >> 5)
+	s[8] = byte(t[2] >> 13)
+	s[9] = byte((t[2] >> 21) | (t[3] << 5))
+	s[10] = byte(t[3] >> 3)
+	s[11] = byte(t[3] >> 11)
+	s[12] = byte((t[3] >> 19) | (t[4] << 6))
+	s[13] = byte(t[4] >> 2)
+	s[14] = byte(t[4] >> 10)
+	s[15] = byte(t[4] >> 18)
+	s[16] = byte(t[5] >> 0)
+	s[17] = byte(t[5] >> 8)
+	s[18] = byte(t[5] >> 16)
+	s[19] = byte((t[5] >> 24) | (t[6] << 1))
+	s[20] = byte(t[6] >> 7)
+	s[21] = byte(t[6] >> 15)
+	s[22] = byte((t[6] >> 23) | (t[7] << 3))
+	s[23] = byte(t[7] >> 5)
+	s[24] = byte(t[7] >> 13)
+	s[25] = byte((t[7] >> 21) | (t[8] << 4))
+	s[26] = byte(t[8] >> 4)
+	s[27] = byte(t[8] >> 12)
+	s[28] = byte((t[8] >> 20) | (t[9] << 6))
+	s[29] = byte(t[9] >> 2)
+	s[30] = byte(t[9] >> 10)
+	s[31] = byte(t[9] >> 18)
 }
 
 func FeIsNegative(f *FieldElement) byte {

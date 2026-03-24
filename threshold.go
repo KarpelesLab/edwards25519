@@ -10,7 +10,7 @@ import (
 )
 
 // Sha512VersionStringRFC6979 is the RFC6979 nonce version for a Schnorr signature
-// over the Curve25519 curve using BLAKE256 as the hash function.
+// over the Curve25519 curve using SHA-512 as the hash function.
 var Sha512VersionStringRFC6979 = []byte("Edwards+SHA512  ")
 
 // combinePubkeys combines a slice of public keys into a single public key
@@ -41,6 +41,9 @@ func combinePubkeys(pks []*PublicKey) *PublicKey {
 
 	if numPubKeys > 2 {
 		for i := 2; i < numPubKeys; i++ {
+			if pks[i] == nil {
+				return nil
+			}
 			pkSumX, pkSumY = curve.Add(pkSumX, pkSumY,
 				pks[i].GetX(), pks[i].GetY())
 		}
@@ -77,13 +80,13 @@ func schnorrPartialSign(msg []byte, priv []byte,
 	}
 	if len(groupPublicKey) != PubKeyBytesLen {
 		str := fmt.Sprintf("wrong size for group public key (got %v, want %v)",
-			len(privNonce), PubKeyBytesLen)
+			len(groupPublicKey), PubKeyBytesLen)
 		return nil, nil, fmt.Errorf("%v", str)
 	}
 	if len(pubNonceSum) != PubKeyBytesLen {
 		str := fmt.Sprintf("wrong size for group nonce public key (got %v, "+
 			"want %v)",
-			len(privNonce), PubKeyBytesLen)
+			len(pubNonceSum), PubKeyBytesLen)
 		return nil, nil, fmt.Errorf("%v", str)
 	}
 

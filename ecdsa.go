@@ -118,7 +118,7 @@ func NonceRFC6979(privkey *big.Int, hash []byte, extra []byte, version []byte) *
 		bx = append(bx, extra...)
 	}
 	if len(version) == 16 && len(extra) == 32 {
-		bx = append(bx, extra...)
+		bx = append(bx, version...)
 	}
 	if len(version) == 16 && len(extra) != 32 {
 		bx = append(bx, bytes.Repeat([]byte{0x00}, 32)...)

@@ -128,8 +128,8 @@ func PrivKeyFromScalar(p []byte) (*PrivateKey, *PublicKey, error) {
 
 	// The scalar must be in the subgroup.
 	curve := Edwards()
-	if pk.ecPk.D.Cmp(curve.N) > 0 {
-		return nil, nil, fmt.Errorf("not on subgroup (>N)")
+	if pk.ecPk.D.Cmp(curve.N) >= 0 {
+		return nil, nil, fmt.Errorf("not on subgroup (>=N)")
 	}
 
 	// The scalar must not be zero or negative.

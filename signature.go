@@ -102,12 +102,10 @@ func ParseDERSignature(sigStr []byte) (*Signature, error) {
 	return parseSig(sigStr, false)
 }
 
-// RecoverCompact uses a signature and a hash to recover is private
-// key, is not yet implemented.
-// TODO: Implement.
+// RecoverCompact uses a signature and a hash to recover the public
+// key. Not yet implemented.
 func RecoverCompact(signature, hash []byte) (*PublicKey, bool, error) {
-	// TODO One day reimplement this? cj
-	return nil, false, nil
+	return nil, false, fmt.Errorf("RecoverCompact is not implemented")
 }
 
 // GetR satisfies the chainec Signature interface.

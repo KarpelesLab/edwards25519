@@ -191,9 +191,19 @@ func addPKCSPadding(src []byte) []byte {
 // removePKCSPadding removes padding from data that was added with addPKCSPadding
 func removePKCSPadding(src []byte) ([]byte, error) {
 	length := len(src)
-	padLength := int(src[length-1])
-	if padLength > aes.BlockSize || length < aes.BlockSize {
+	if length < aes.BlockSize {
 		return nil, errInvalidPadding
+	}
+
+	padLength := int(src[length-1])
+	if padLength == 0 || padLength > aes.BlockSize {
+		return nil, errInvalidPadding
+	}
+
+	for i := length - padLength; i < length; i++ {
+		if src[i] != byte(padLength) {
+			return nil, errInvalidPadding
+		}
 	}
 
 	return src[:length-padLength], nil
