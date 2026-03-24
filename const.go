@@ -7,10 +7,12 @@ package edwards25519
 import "math/big"
 
 const (
-	PublicKeySize  = 32
+	// PublicKeySize is the size, in bytes, of a serialized public key.
+	PublicKeySize = 32
+	// PrivateKeySize is the size, in bytes, of a serialized private key (seed + public key).
 	PrivateKeySize = 64
 
-	// SignatureSize is the size of an encoded ECDSA signature.
+	// SignatureSize is the size, in bytes, of an encoded Ed25519 signature.
 	SignatureSize = 64
 )
 
@@ -22,10 +24,12 @@ var d2 = FieldElement{
 	-21827239, -5839606, -30745221, 13898782, 229458, 15978800, -12551817, -6495438, 29715968, 9444199,
 }
 
+// SqrtM1 is the field element representation of sqrt(-1) mod p.
 var SqrtM1 = FieldElement{
 	-32595792, -7943725, 9377950, 3500415, 12389472, -272473, -25146209, -2005654, 326686, 11406482,
 }
 
+// A is the Montgomery curve constant 486662 used in Curve25519.
 var A = FieldElement{
 	486662, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }

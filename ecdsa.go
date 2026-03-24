@@ -52,8 +52,8 @@ func GenerateKeyXY(rand io.Reader) (priv []byte, x, y *big.Int, err error) {
 	return
 }
 
-// SignFromSecret signs a message 'hash' using the given private key priv. It doesn't
-// actually user the random reader (the lib is maybe deterministic???).
+// SignFromSecret signs a message 'hash' using the given private key priv. The
+// rand parameter is unused; signing is deterministic.
 func SignFromSecret(rand io.Reader, priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 	r, s, err = SignFromSecretNoReader(priv, hash)
 
@@ -61,7 +61,7 @@ func SignFromSecret(rand io.Reader, priv *PrivateKey, hash []byte) (r, s *big.In
 }
 
 // SignFromSecretNoReader signs a message 'hash' using the given private key
-// priv. It doesn't actually user the random reader.
+// priv. Signing is deterministic and requires no random reader.
 func SignFromSecretNoReader(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 	privBytes := priv.SerializeSecret()
 	privArray := copyBytes64(privBytes)
@@ -329,7 +329,7 @@ func SignThreshold(priv *PrivateKey, groupPub *PublicKey, hash []byte, privNonce
 	return sigEd.GetR(), sigEd.GetS(), nil
 }
 
-// Sign is the generalized and exported version of Ed25519 signing, that
+// SignRS is the generalized and exported version of Ed25519 signing, that
 // handles both standard private secrets and non-standard scalars.
 func SignRS(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 	if priv == nil {
@@ -349,7 +349,7 @@ func SignRS(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 	return SignFromSecretNoReader(priv, hash)
 }
 
-// Verify verifies a message 'hash' using the given public keys and signature.
+// VerifyRS verifies a message 'hash' using the given public key and signature (r, s).
 func VerifyRS(pub *PublicKey, hash []byte, r, s *big.Int) bool {
 	if pub == nil || hash == nil || r == nil || s == nil {
 		return false

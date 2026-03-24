@@ -14,6 +14,7 @@ import (
 
 // These constants define the lengths of serialized public keys.
 const (
+	// PubKeyBytesLen is the size, in bytes, of a serialized public key.
 	PubKeyBytesLen = 32
 )
 

@@ -40,8 +40,7 @@ var (
 )
 
 // GenerateSharedSecret generates a shared secret based on a private key and a
-// private key using Diffie-Hellman key exchange (ECDH) (RFC 4753).
-// RFC5903 Section 9 states we should only return y.
+// public key using Diffie-Hellman key exchange (ECDH) (RFC 4753).
 func GenerateSharedSecret(privkey *PrivateKey, pubkey *PublicKey) []byte {
 	x, y := pubkey.Curve.ScalarMult(pubkey.X, pubkey.Y, privkey.ecPk.D.Bytes())
 	return bigIntPointToEncodedBytes(x, y)[:]

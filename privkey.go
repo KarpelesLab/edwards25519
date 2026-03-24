@@ -16,7 +16,9 @@ import (
 
 // These constants define the lengths of serialized private keys.
 const (
-	PrivScalarSize  = 32
+	// PrivScalarSize is the size, in bytes, of a private scalar.
+	PrivScalarSize = 32
+	// PrivKeyBytesLen is the size, in bytes, of a serialized private key (scalar + public key).
 	PrivKeyBytesLen = 64
 )
 

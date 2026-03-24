@@ -18,15 +18,18 @@ type FieldElement [10]int64
 
 var zeroFE FieldElement
 
+// FeZero sets fe to zero.
 func FeZero(fe *FieldElement) {
 	copy(fe[:], zeroFE[:])
 }
 
+// FeOne sets fe to one.
 func FeOne(fe *FieldElement) {
 	FeZero(fe)
 	fe[0] = 1
 }
 
+// FeAdd sets dst = a + b.
 func FeAdd(dst, a, b *FieldElement) {
 	dst[0] = a[0] + b[0]
 	dst[1] = a[1] + b[1]
@@ -40,6 +43,7 @@ func FeAdd(dst, a, b *FieldElement) {
 	dst[9] = a[9] + b[9]
 }
 
+// FeSub sets dst = a - b.
 func FeSub(dst, a, b *FieldElement) {
 	dst[0] = a[0] - b[0]
 	dst[1] = a[1] - b[1]
@@ -53,6 +57,7 @@ func FeSub(dst, a, b *FieldElement) {
 	dst[9] = a[9] - b[9]
 }
 
+// FeCopy sets dst = src.
 func FeCopy(dst, src *FieldElement) {
 	copy(dst[:], src[:])
 }
@@ -92,6 +97,7 @@ func load4(in []byte) int64 {
 	return r
 }
 
+// FeFromBytes unpacks a 32-byte little-endian encoding into a field element.
 func FeFromBytes(dst *FieldElement, src *[32]byte) {
 	h0 := load4(src[:])
 	h1 := load3(src[4:]) << 6
@@ -225,12 +231,14 @@ func FeToBytes(s *[32]byte, h *FieldElement) {
 	s[31] = byte(t[9] >> 18)
 }
 
+// FeIsNegative returns 1 if f is negative (odd), 0 otherwise.
 func FeIsNegative(f *FieldElement) byte {
 	var s [32]byte
 	FeToBytes(&s, f)
 	return s[0] & 1
 }
 
+// FeIsNonZero returns 1 if f is non-zero, 0 otherwise.
 func FeIsNonZero(f *FieldElement) int64 {
 	var s [32]byte
 	FeToBytes(&s, f)
@@ -266,6 +274,7 @@ func FeNeg(h, f *FieldElement) {
 	h[9] = -f[9]
 }
 
+// FeCombine packs ten int64 limbs into a reduced FieldElement with proper carry propagation.
 func FeCombine(h *FieldElement, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9 int64) {
 	var c0, c1, c2, c3, c4, c5, c6, c7, c8, c9 int64
 
@@ -520,6 +529,7 @@ func FeSquare2(h, f *FieldElement) {
 	FeCombine(h, h0, h1, h2, h3, h4, h5, h6, h7, h8, h9)
 }
 
+// FeInvert sets out = z^(-1) by computing z^(p-2) mod p.
 func FeInvert(out, z *FieldElement) {
 	var t0, t1, t2, t3 FieldElement
 	var i int
@@ -645,32 +655,43 @@ func fePow22523(out, z *FieldElement) {
 //   CompletedGroupElement: ((X:Z),(Y:T)) satisfying x=X/Z, y=Y/T
 //   PreComputedGroupElement: (y+x,y-x,2dxy)
 
+// ProjectiveGroupElement represents a point in projective coordinates (X:Y:Z)
+// satisfying x=X/Z, y=Y/Z.
 type ProjectiveGroupElement struct {
 	X, Y, Z FieldElement
 }
 
+// ExtendedGroupElement represents a point in extended coordinates (X:Y:Z:T)
+// satisfying x=X/Z, y=Y/Z, XY=ZT.
 type ExtendedGroupElement struct {
 	X, Y, Z, T FieldElement
 }
 
+// CompletedGroupElement represents a point in completed coordinates ((X:Z),(Y:T))
+// satisfying x=X/Z, y=Y/T.
 type CompletedGroupElement struct {
 	X, Y, Z, T FieldElement
 }
 
+// PreComputedGroupElement represents a precomputed point as (y+x, y-x, 2dxy).
 type PreComputedGroupElement struct {
 	YplusX, YminusX, XY2D FieldElement
 }
 
+// CachedGroupElement represents a cached point as (Y+X, Y-X, Z, T*2d) for
+// efficient addition.
 type CachedGroupElement struct {
 	YplusX, YminusX, Z, T2d FieldElement
 }
 
+// Zero sets p to the identity element (0:1:1).
 func (p *ProjectiveGroupElement) Zero() {
 	FeZero(&p.X)
 	FeOne(&p.Y)
 	FeOne(&p.Z)
 }
 
+// Double sets r = 2*p.
 func (p *ProjectiveGroupElement) Double(r *CompletedGroupElement) {
 	var t0 FieldElement
 
@@ -685,6 +706,7 @@ func (p *ProjectiveGroupElement) Double(r *CompletedGroupElement) {
 	FeSub(&r.T, &r.T, &r.Z)
 }
 
+// ToBytes encodes p into a 32-byte compressed point representation.
 func (p *ProjectiveGroupElement) ToBytes(s *[32]byte) {
 	var recip, x, y FieldElement
 
@@ -695,6 +717,7 @@ func (p *ProjectiveGroupElement) ToBytes(s *[32]byte) {
 	s[31] ^= FeIsNegative(&x) << 7
 }
 
+// ToExtended converts p from projective to extended coordinates.
 func (p *ProjectiveGroupElement) ToExtended(r *ExtendedGroupElement) {
 	// Copy X, Y, Z
 	FeCopy(&r.X, &p.X)
@@ -708,6 +731,7 @@ func (p *ProjectiveGroupElement) ToExtended(r *ExtendedGroupElement) {
 	FeMul(&r.T, &XY, &ZInv)
 }
 
+// Zero sets p to the identity element (0:1:1:0).
 func (p *ExtendedGroupElement) Zero() {
 	FeZero(&p.X)
 	FeOne(&p.Y)
@@ -715,12 +739,14 @@ func (p *ExtendedGroupElement) Zero() {
 	FeZero(&p.T)
 }
 
+// Double sets r = 2*p.
 func (p *ExtendedGroupElement) Double(r *CompletedGroupElement) {
 	var q ProjectiveGroupElement
 	p.ToProjective(&q)
 	q.Double(r)
 }
 
+// ToCached converts p to a cached group element for efficient addition.
 func (p *ExtendedGroupElement) ToCached(r *CachedGroupElement) {
 	FeAdd(&r.YplusX, &p.Y, &p.X)
 	FeSub(&r.YminusX, &p.Y, &p.X)
@@ -728,12 +754,14 @@ func (p *ExtendedGroupElement) ToCached(r *CachedGroupElement) {
 	FeMul(&r.T2d, &p.T, &d2)
 }
 
+// ToProjective converts p from extended to projective coordinates by dropping T.
 func (p *ExtendedGroupElement) ToProjective(r *ProjectiveGroupElement) {
 	FeCopy(&r.X, &p.X)
 	FeCopy(&r.Y, &p.Y)
 	FeCopy(&r.Z, &p.Z)
 }
 
+// ToBytes encodes p into a 32-byte compressed point representation.
 func (p *ExtendedGroupElement) ToBytes(s *[32]byte) {
 	var recip, x, y FieldElement
 
@@ -744,6 +772,8 @@ func (p *ExtendedGroupElement) ToBytes(s *[32]byte) {
 	s[31] ^= FeIsNegative(&x) << 7
 }
 
+// FromBytes decodes a 32-byte compressed point into p. Returns false if the
+// encoding is invalid or the point is not on the curve.
 func (p *ExtendedGroupElement) FromBytes(s *[32]byte) bool {
 	var u, v, v3, vxx, check FieldElement
 
@@ -790,12 +820,14 @@ func (p *ExtendedGroupElement) FromBytes(s *[32]byte) bool {
 	return true
 }
 
+// ToProjective converts p from completed to projective coordinates.
 func (p *CompletedGroupElement) ToProjective(r *ProjectiveGroupElement) {
 	FeMul(&r.X, &p.X, &p.T)
 	FeMul(&r.Y, &p.Y, &p.Z)
 	FeMul(&r.Z, &p.Z, &p.T)
 }
 
+// ToExtended converts p from completed to extended coordinates.
 func (p *CompletedGroupElement) ToExtended(r *ExtendedGroupElement) {
 	FeMul(&r.X, &p.X, &p.T)
 	FeMul(&r.Y, &p.Y, &p.Z)
@@ -803,6 +835,7 @@ func (p *CompletedGroupElement) ToExtended(r *ExtendedGroupElement) {
 	FeMul(&r.T, &p.X, &p.Y)
 }
 
+// Zero sets p to the identity element in precomputed form.
 func (p *PreComputedGroupElement) Zero() {
 	FeOne(&p.YplusX)
 	FeOne(&p.YminusX)
@@ -825,6 +858,7 @@ func geAdd(r *CompletedGroupElement, p *ExtendedGroupElement, q *CachedGroupElem
 	FeSub(&r.T, &t0, &r.T)
 }
 
+// GeAdd sets r = p + q using extended and cached group element representations.
 func GeAdd(r *CompletedGroupElement, p *ExtendedGroupElement, q *CachedGroupElement) {
 	geAdd(r, p, q)
 }
@@ -972,6 +1006,7 @@ func negative(b int64) int64 {
 	return (b >> 63) & 1
 }
 
+// PreComputedGroupElementCMove conditionally replaces t with u when b == 1.
 func PreComputedGroupElementCMove(t, u *PreComputedGroupElement, b int64) {
 	FeCMove(&t.YplusX, &u.YplusX, b)
 	FeCMove(&t.YminusX, &u.YminusX, b)
