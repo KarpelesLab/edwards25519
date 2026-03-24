@@ -1,4 +1,4 @@
-module github.com/ModChain/edwards25519
+module github.com/KarpelesLab/edwards25519
 
 go 1.23.0
 

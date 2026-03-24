@@ -1,4 +1,4 @@
-[![GoDoc](https://godoc.org/github.com/ModChain/edwards25519?status.svg)](https://godoc.org/github.com/ModChain/edwards25519)
+[![GoDoc](https://godoc.org/github.com/KarpelesLab/edwards25519?status.svg)](https://godoc.org/github.com/KarpelesLab/edwards25519)
 
 # edwards25519
 
