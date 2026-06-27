@@ -125,7 +125,7 @@ func TestScalarAddModN(t *testing.T) {
 
 	// a + b where a + b > N but a + b < P should still reduce mod N
 	a := new(big.Int).Sub(n, big.NewInt(1)) // N-1
-	b := big.NewInt(2)                       // 2
+	b := big.NewInt(2)                      // 2
 	result := scalarAdd(a, b)
 
 	// (N-1) + 2 = N+1, mod N = 1
