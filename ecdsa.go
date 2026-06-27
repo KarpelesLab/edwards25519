@@ -225,11 +225,29 @@ func bits2octets(in []byte, rolen int) []byte {
 	return int2octets(z2, rolen)
 }
 
-// SignFromScalar signs a message 'hash' using the given private scalar priv.
-// It uses RFC6979 to generate a deterministic nonce. Considered experimental.
-// r = kG, where k is the RFC6979 nonce
+// SignFromScalar signs a message 'hash' using the given private scalar priv and
+// a caller-supplied nonce. Considered experimental.
+// r = kG, where k is the caller-supplied nonce
 // s = r + hash512(k || A || M) * a
+//
+// The caller supplies and is responsible for the nonce. The nonce MUST be a
+// uniformly random scalar in [1, N) and MUST be unique per message; reusing or
+// mis-generating a nonce leaks the private scalar.
 func SignFromScalar(priv *PrivateKey, nonce []byte, hash []byte) (r, s *big.Int, err error) {
+	// Input validation: reject nil inputs to avoid panics.
+	if priv == nil || priv.ecPk == nil || nonce == nil || hash == nil {
+		return nil, nil, fmt.Errorf("nil input")
+	}
+
+	// Reject a zero or out-of-range nonce. A nonce of 0 (or any multiple of N)
+	// makes R = nonce*G the identity point, which collapses s to
+	// H(R||A||M)*a and directly leaks the private scalar a. Enforce that the
+	// nonce decodes to a scalar in [1, N).
+	nonceScalar := new(big.Int).SetBytes(nonce)
+	if nonceScalar.Cmp(one) < 0 || nonceScalar.Cmp(Edwards().N) >= 0 {
+		return nil, nil, fmt.Errorf("nonce scalar is out of range [1, N); a zero or out-of-range nonce yields an identity R and leaks the private scalar")
+	}
+
 	publicKey := new([PubKeyBytesLen]byte)
 	var A ExtendedGroupElement
 	privateScalar := copyBytes(priv.Serialize())
@@ -275,17 +293,30 @@ func SignFromScalar(priv *PrivateKey, nonce []byte, hash []byte) (r, s *big.Int,
 }
 
 // SignThreshold signs a message 'hash' using the given private scalar priv in
-// a threshold group signature. It uses RFC6979 to generate a deterministic nonce.
-// Considered experimental.
+// a threshold group signature. The nonce is NOT generated internally: the
+// caller supplies privNonce / pubNonceSum and is responsible for ensuring the
+// nonce is uniformly random and unique per message.
 // As opposed to the threshold signing function for secp256k1, this function
 // takes the entirety of the public nonce point (all points added) instead of
 // the public nonce point with n-1 keys added.
 // r = K_Sum
 // s = r + hash512(k || A || M) * a
+//
+// WARNING: This threshold/Schnorr multisig scheme is EXPERIMENTAL and INSECURE
+// for production multi-party use. It is vulnerable to:
+//   - Nonce-reuse / Wagner-ROS forgery: this naive single-round aggregate-nonce
+//     construction permits key recovery and forgery under concurrent signing.
+//     Callers MUST guarantee per-message nonce uniqueness and avoid concurrent
+//     signing sessions.
+//   - Rogue-key attacks: the group key is a plain sum of member keys with no
+//     key-aggregation coefficients or proof-of-possession.
+//
+// These are design-level weaknesses that cannot be fixed without a redesign.
+// Production multi-party signing should use MuSig2 or FROST instead.
 func SignThreshold(priv *PrivateKey, groupPub *PublicKey, hash []byte, privNonce *PrivateKey,
 	pubNonceSum *PublicKey) (r, s *big.Int, err error) {
 
-	if priv == nil || hash == nil || privNonce == nil || pubNonceSum == nil {
+	if priv == nil || groupPub == nil || hash == nil || privNonce == nil || pubNonceSum == nil {
 		return nil, nil, fmt.Errorf("nil input")
 	}
 
@@ -299,6 +330,16 @@ func SignThreshold(priv *PrivateKey, groupPub *PublicKey, hash []byte, privNonce
 	// That is, R = k1G + ... + knG.
 	encodedGroupR := bigIntPointToEncodedBytes(pubNonceSum.GetX(),
 		pubNonceSum.GetY())
+
+	// Defense-in-depth: reject an identity group nonce point. A cancelled /
+	// identity group nonce (R = identity) destroys the nonce binding of the
+	// signature. The identity point's compressed encoding is 0x01 followed by
+	// 31 zero bytes (little-endian).
+	var identityEncoded [32]byte
+	identityEncoded[0] = 0x01
+	if bytes.Equal(encodedGroupR[:], identityEncoded[:]) {
+		return nil, nil, fmt.Errorf("group nonce point is the identity; nonce binding would be destroyed")
+	}
 
 	// h = hash512(k || A || M)
 	var hramDigest [64]byte

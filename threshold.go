@@ -15,24 +15,32 @@ var Sha512VersionStringRFC6979 = []byte("Edwards+SHA512  ")
 
 // combinePubkeys combines a slice of public keys into a single public key
 // by adding them together with point addition.
+//
+// WARNING: This naive key-summation scheme is EXPERIMENTAL and INSECURE against
+// rogue-key attacks: the group key is a plain sum of member keys with no
+// key-aggregation coefficients or proof-of-possession, so a malicious member
+// can choose its key to control the aggregate. Production multi-party signing
+// should use a key-aggregation scheme such as MuSig2 or FROST instead.
 func combinePubkeys(pks []*PublicKey) *PublicKey {
 	numPubKeys := len(pks)
 
-	// Have to have at least two pubkeys.
+	curve := Edwards()
+
+	// Have to have at least one pubkey.
 	if numPubKeys < 1 {
 		return nil
 	}
 	if numPubKeys == 1 {
+		// Validate the single key the same way the multi-key path does:
+		// reject nil or off-curve points.
+		if pks[0] == nil || !curve.IsOnCurve(pks[0].GetX(), pks[0].GetY()) {
+			return nil
+		}
 		return pks[0]
-	}
-	if pks == nil {
-		return nil
 	}
 	if pks[0] == nil || pks[1] == nil {
 		return nil
 	}
-
-	curve := Edwards()
 	var pkSumX *big.Int
 	var pkSumY *big.Int
 
@@ -58,6 +66,14 @@ func combinePubkeys(pks []*PublicKey) *PublicKey {
 
 // schnorrPartialSign creates a partial Schnorr signature which may be combined
 // with other Schnorr signatures to create a valid signature for a group pubkey.
+//
+// WARNING: This threshold/Schnorr multisig scheme is EXPERIMENTAL and INSECURE
+// for production multi-party use. It is vulnerable to nonce-reuse / Wagner-ROS
+// forgery (naive single-round aggregate nonces permit key recovery and forgery
+// under concurrent signing) and to rogue-key attacks (the group key is a plain
+// sum with no key-aggregation coefficients or proof-of-possession). Callers
+// MUST ensure per-message nonce uniqueness. Production multi-party signing
+// should use MuSig2 or FROST instead.
 func schnorrPartialSign(msg []byte, priv []byte,
 	groupPublicKey []byte, privNonce []byte, pubNonceSum []byte) (*big.Int,
 	*big.Int, error) {
@@ -133,10 +149,24 @@ func schnorrPartialSign(msg []byte, priv []byte,
 		return nil, nil, fmt.Errorf("%v", str)
 	}
 
-	privDecoded, _, _ := PrivKeyFromScalar(priv)
-	groupPubKeyDecoded, _ := ParsePubKey(groupPublicKey)
-	privNonceDecoded, _, _ := PrivKeyFromScalar(privNonce)
-	pubNonceSumDecoded, _ := ParsePubKey(pubNonceSum)
+	// Capture and check decode errors to prevent a latent nil-deref downstream
+	// in SignThreshold.
+	privDecoded, _, err := PrivKeyFromScalar(priv)
+	if err != nil || privDecoded == nil {
+		return nil, nil, fmt.Errorf("could not decode private scalar: %v", err)
+	}
+	groupPubKeyDecoded, err := ParsePubKey(groupPublicKey)
+	if err != nil || groupPubKeyDecoded == nil {
+		return nil, nil, fmt.Errorf("could not decode group public key: %v", err)
+	}
+	privNonceDecoded, _, err := PrivKeyFromScalar(privNonce)
+	if err != nil || privNonceDecoded == nil {
+		return nil, nil, fmt.Errorf("could not decode private nonce: %v", err)
+	}
+	pubNonceSumDecoded, err := ParsePubKey(pubNonceSum)
+	if err != nil || pubNonceSumDecoded == nil {
+		return nil, nil, fmt.Errorf("could not decode public nonce sum: %v", err)
+	}
 
 	return SignThreshold(privDecoded, groupPubKeyDecoded, msg,
 		privNonceDecoded, pubNonceSumDecoded)
@@ -145,6 +175,11 @@ func schnorrPartialSign(msg []byte, priv []byte,
 // schnorrCombineSigs combines a list of partial Schnorr signatures s values
 // into a complete signature s for some group public key. This is achieved
 // by simply adding the s values of the partial signatures as scalars.
+//
+// WARNING: Part of an EXPERIMENTAL and INSECURE threshold/Schnorr multisig
+// scheme that is vulnerable to rogue-key and nonce-reuse/ROS attacks. Callers
+// MUST ensure per-message nonce uniqueness. Production multi-party signing
+// should use MuSig2 or FROST instead.
 func schnorrCombineSigs(sigss [][]byte) (*big.Int, error) {
 	curve := Edwards()
 	combinedSigS := new(big.Int).SetInt64(0)
@@ -172,6 +207,11 @@ func schnorrCombineSigs(sigss [][]byte) (*big.Int, error) {
 }
 
 // schnorrCombinePartialSigs combines partial signatures.
+//
+// WARNING: Part of an EXPERIMENTAL and INSECURE threshold/Schnorr multisig
+// scheme that is vulnerable to rogue-key and nonce-reuse/ROS attacks. Callers
+// MUST ensure per-message nonce uniqueness. Production multi-party signing
+// should use MuSig2 or FROST instead.
 func schnorrCombinePartialSigs(sigs []*Signature) (*Signature, error) {
 	sigss := make([][]byte, len(sigs))
 	for i, sig := range sigs {
