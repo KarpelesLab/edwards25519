@@ -340,8 +340,7 @@ func RepresentativeToPublicKey(publicKey, representative *[32]byte) {
 	// Operate on a local copy with both high bits (254 and 255) cleared.
 	// FeFromBytes only masks bit 255, but genuine representatives never set
 	// bit 254, so it must be cleared here for correct decoding.
-	var masked [32]byte
-	masked = *representative
+	masked := *representative
 	masked[31] &= 0x3f // clear bits 254 and 255
 	edwards25519.FeFromBytes(&rr2, &masked)
 

@@ -39,8 +39,7 @@ func TestSecFixExtraHighBitRoundTrip(t *testing.T) {
 		// Randomize the top two bits to each of the four possible values and
 		// ensure the public key is reconstructed identically every time.
 		for _, hi := range []byte{0, 1, 2, 3} {
-			var rep [32]byte
-			rep = representative
+			rep := representative
 			rep[31] = (rep[31] & 0x3f) | (hi << 6)
 
 			RepresentativeToPublicKey(&publicKey2, &rep)
@@ -72,8 +71,7 @@ func TestSecFixExtraNoInputMutation(t *testing.T) {
 		// observable.
 		representative[31] |= 0xc0
 
-		var before [32]byte
-		before = representative
+		before := representative
 
 		RepresentativeToPublicKey(&publicKey, &representative)
 
