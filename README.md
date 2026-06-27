@@ -1,4 +1,6 @@
-[![GoDoc](https://godoc.org/github.com/KarpelesLab/edwards25519?status.svg)](https://godoc.org/github.com/KarpelesLab/edwards25519)
+[![CI](https://github.com/KarpelesLab/edwards25519/actions/workflows/ci.yml/badge.svg)](https://github.com/KarpelesLab/edwards25519/actions/workflows/ci.yml)
+[![Coverage Status](https://coveralls.io/repos/github/KarpelesLab/edwards25519/badge.svg?branch=master)](https://coveralls.io/github/KarpelesLab/edwards25519?branch=master)
+[![Go Reference](https://pkg.go.dev/badge/github.com/KarpelesLab/edwards25519.svg)](https://pkg.go.dev/github.com/KarpelesLab/edwards25519)
 
 # edwards25519
 
