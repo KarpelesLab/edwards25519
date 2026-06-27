@@ -55,6 +55,26 @@ func ParsePubKey(pubKeyStr []byte) (key *PublicKey, err error) {
 		return nil, fmt.Errorf("pubkey Y parameter is >= to P")
 	}
 
+	// Subgroup / low-order point check.
+	//
+	// The Ed25519 group has a cofactor of 8, so the full curve contains a
+	// small torsion subgroup of 8 low-order points (including the identity
+	// (0,1)). Such points are dangerous for the ECDH key agreement used by
+	// Encrypt/Decrypt (where the peer's ephemeral public key is attacker
+	// supplied) and for key aggregation: multiplying a low-order point by any
+	// scalar yields one of only a handful of possible results, collapsing the
+	// shared secret to a tiny, predictable set.
+	//
+	// A point P has order dividing the cofactor iff [8]P is the identity.
+	// Reject any such point here. Note this validation deliberately lives only
+	// in ParsePubKey: Ed25519 signature verification (Verify) uses
+	// A.FromBytes directly and must keep accepting the low-order public keys
+	// present in RFC 8032 test vectors.
+	lx, ly := curve.ScalarMult(pubkey.X, pubkey.Y, []byte{8})
+	if lx == nil || (lx.Sign() == 0 && ly.Cmp(one) == 0) {
+		return nil, fmt.Errorf("public key is a low-order point")
+	}
+
 	return &pubkey, nil
 }
 
