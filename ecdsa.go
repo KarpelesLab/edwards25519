@@ -226,14 +226,26 @@ func bits2octets(in []byte, rolen int) []byte {
 }
 
 // SignFromScalar signs a message 'hash' using the given private scalar priv and
-// a caller-supplied nonce. Considered experimental.
+// a caller-supplied nonce.
 // r = kG, where k is the caller-supplied nonce
 // s = r + hash512(k || A || M) * a
 //
 // The caller supplies and is responsible for the nonce. The nonce MUST be a
 // uniformly random scalar in [1, N) and MUST be unique per message; reusing or
 // mis-generating a nonce leaks the private scalar.
+//
+// Deprecated: the caller-supplied nonce makes this a key-recovery foot-gun —
+// reusing a nonce across two messages, or supplying a mis-generated one, leaks
+// the private scalar. Use SignRS or PrivateKey.Sign instead, which derive a safe
+// deterministic nonce via RFC6979.
 func SignFromScalar(priv *PrivateKey, nonce []byte, hash []byte) (r, s *big.Int, err error) {
+	return signFromScalar(priv, nonce, hash)
+}
+
+// signFromScalar is the unexported implementation of SignFromScalar. It is used
+// internally by SignRS / PrivateKey.Sign, which supply a safe RFC6979-derived
+// nonce, so those callers do not depend on the deprecated exported wrapper.
+func signFromScalar(priv *PrivateKey, nonce []byte, hash []byte) (r, s *big.Int, err error) {
 	// Input validation: reject nil inputs to avoid panics.
 	if priv == nil || priv.ecPk == nil || nonce == nil || hash == nil {
 		return nil, nil, fmt.Errorf("nil input")
@@ -313,6 +325,11 @@ func SignFromScalar(priv *PrivateKey, nonce []byte, hash []byte) (r, s *big.Int,
 //
 // These are design-level weaknesses that cannot be fixed without a redesign.
 // Production multi-party signing should use MuSig2 or FROST instead.
+//
+// Deprecated: this experimental threshold/Schnorr multisig scheme is insecure
+// for production multi-party use (rogue-key and nonce-reuse/Wagner-ROS attacks)
+// and cannot be fixed without a protocol redesign. Use a vetted MuSig2 or FROST
+// implementation instead.
 func SignThreshold(priv *PrivateKey, groupPub *PublicKey, hash []byte, privNonce *PrivateKey,
 	pubNonceSum *PublicKey) (r, s *big.Int, err error) {
 
@@ -384,7 +401,7 @@ func SignRS(priv *PrivateKey, hash []byte) (r, s *big.Int, err error) {
 		privLE := copyBytes(priv.Serialize())
 		reverse(privLE)
 		nonce := nonceRFC6979(privLE[:], hash, nil, nil)
-		return SignFromScalar(priv, nonce, hash)
+		return signFromScalar(priv, nonce, hash)
 	}
 
 	return SignFromSecretNoReader(priv, hash)

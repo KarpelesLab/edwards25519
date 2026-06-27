@@ -207,7 +207,7 @@ func (p PrivateKey) Sign(hash []byte) (*Signature, error) {
 		privLE := copyBytes(p.Serialize())
 		reverse(privLE)
 		nonce := nonceRFC6979(privLE[:], hash, nil, nil)
-		r, s, err = SignFromScalar(&p, nonce, hash)
+		r, s, err = signFromScalar(&p, nonce, hash)
 	} else {
 		r, s, err = SignFromSecretNoReader(&p, hash)
 	}
