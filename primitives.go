@@ -40,19 +40,14 @@ func copyBytes(aB []byte) *[32]byte {
 	}
 	s := new([32]byte)
 
-	// If we have a short byte string, expand
-	// it so that it's long enough.
-	aBLen := len(aB)
-	if aBLen < fieldIntSize {
-		diff := fieldIntSize - aBLen
-		for i := 0; i < diff; i++ {
-			aB = append([]byte{0x00}, aB...)
-		}
+	// If the input is longer than the destination, keep only the
+	// low-order (trailing) bytes, i.e. reduce mod 2^(8*fieldIntSize).
+	// The destination is zero-initialized, so a short input is
+	// right-aligned (big-endian) without per-byte prepend allocations.
+	if len(aB) > fieldIntSize {
+		aB = aB[len(aB)-fieldIntSize:]
 	}
-
-	for i := 0; i < fieldIntSize; i++ {
-		s[i] = aB[i]
-	}
+	copy(s[fieldIntSize-len(aB):], aB)
 
 	return s
 }
@@ -65,19 +60,14 @@ func copyBytes64(aB []byte) *[64]byte {
 
 	s := new([64]byte)
 
-	// If we have a short byte string, expand
-	// it so that it's long enough.
-	aBLen := len(aB)
-	if aBLen < 64 {
-		diff := 64 - aBLen
-		for i := 0; i < diff; i++ {
-			aB = append([]byte{0x00}, aB...)
-		}
+	// If the input is longer than the destination, keep only the
+	// low-order (trailing) bytes, i.e. reduce mod 2^(8*64).
+	// The destination is zero-initialized, so a short input is
+	// right-aligned (big-endian) without per-byte prepend allocations.
+	if len(aB) > 64 {
+		aB = aB[len(aB)-64:]
 	}
-
-	for i := 0; i < 64; i++ {
-		s[i] = aB[i]
-	}
+	copy(s[64-len(aB):], aB)
 
 	return s
 }
@@ -92,19 +82,14 @@ func bigIntToEncodedBytes(a *big.Int) *[32]byte {
 	// Caveat: a can be longer than 32 bytes.
 	aB := a.Bytes()
 
-	// If we have a short byte string, expand
-	// it so that it's long enough.
-	aBLen := len(aB)
-	if aBLen < fieldIntSize {
-		diff := fieldIntSize - aBLen
-		for i := 0; i < diff; i++ {
-			aB = append([]byte{0x00}, aB...)
-		}
+	// If the input is longer than the destination, keep only the
+	// low-order (trailing) bytes, i.e. reduce mod 2^(8*fieldIntSize).
+	// The destination is zero-initialized, so a short input is
+	// right-aligned (big-endian) without per-byte prepend allocations.
+	if len(aB) > fieldIntSize {
+		aB = aB[len(aB)-fieldIntSize:]
 	}
-
-	for i := 0; i < fieldIntSize; i++ {
-		s[i] = aB[i]
-	}
+	copy(s[fieldIntSize-len(aB):], aB)
 
 	// Reverse the byte string --> little endian after
 	// encoding.
@@ -123,19 +108,14 @@ func bigIntToEncodedBytesNoReverse(a *big.Int) *[32]byte {
 	// Caveat: a can be longer than 32 bytes.
 	aB := a.Bytes()
 
-	// If we have a short byte string, expand
-	// it so that it's long enough.
-	aBLen := len(aB)
-	if aBLen < fieldIntSize {
-		diff := fieldIntSize - aBLen
-		for i := 0; i < diff; i++ {
-			aB = append([]byte{0x00}, aB...)
-		}
+	// If the input is longer than the destination, keep only the
+	// low-order (trailing) bytes, i.e. reduce mod 2^(8*fieldIntSize).
+	// The destination is zero-initialized, so a short input is
+	// right-aligned (big-endian) without per-byte prepend allocations.
+	if len(aB) > fieldIntSize {
+		aB = aB[len(aB)-fieldIntSize:]
 	}
-
-	for i := 0; i < fieldIntSize; i++ {
-		s[i] = aB[i]
-	}
+	copy(s[fieldIntSize-len(aB):], aB)
 
 	return s
 }
