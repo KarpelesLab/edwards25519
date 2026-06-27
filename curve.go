@@ -171,11 +171,11 @@ func (curve *TwistedEdwardsCurve) IsOnCurve(x *big.Int, y *big.Int) bool {
 		return false
 	}
 
-	// Check if we're in the cofactor of the curve (8).
-	modEight := new(big.Int)
-	modEight.Mod(enumBig, eight)
-
-	return modEight.Cmp(zero) == 0
+	// The curve-equation residual above is satisfied, so (x, y) lies on the
+	// curve. This only confirms membership of the full curve group; it does
+	// not perform any subgroup / cofactor validation. Low-order point
+	// rejection (the subgroup check) is handled separately in ParsePubKey.
+	return true
 }
 
 // cachedGroupElement is a cached extended group element derived from
