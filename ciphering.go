@@ -144,7 +144,7 @@ func Decrypt(priv *PrivateKey, in []byte) ([]byte, error) {
 	}
 
 	// check for cipher text length
-	if (len(in)-aes.BlockSize-offset-sha256.Size)%aes.BlockSize != 0 {
+	if (len(in)-offset-sha256.Size)%aes.BlockSize != 0 {
 		return nil, errInvalidPadding // not padded to 16 bytes
 	}
 
