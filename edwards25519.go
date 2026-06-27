@@ -863,6 +863,31 @@ func GeAdd(r *CompletedGroupElement, p *ExtendedGroupElement, q *CachedGroupElem
 	geAdd(r, p, q)
 }
 
+// Add sets r = a + b, the sum of two points in extended coordinates, and
+// returns r. It wraps the ToCached/geAdd/ToExtended sequence so callers can add
+// points directly without juggling the intermediate representations.
+//
+// r may alias a and/or b: both inputs are fully consumed before r is written.
+//
+// Combined with FromBytes (decode) and ToBytes (encode), this gives the full
+// Decode->Add->Encode flow used for watch-only public-key derivation, e.g. the
+// BIP32-Ed25519 child point A_child = A_parent + (8*Z_L)*B, where the (8*Z_L)*B
+// term is produced directly by GeScalarMultBase:
+//
+//	var parent, contrib, child ExtendedGroupElement
+//	parent.FromBytes(&parentEnc)       // decode the parent xpub
+//	GeScalarMultBase(&contrib, &s8zL)  // (8*Z_L)*B
+//	child.Add(&parent, &contrib)       // A_child
+//	child.ToBytes(&childEnc)           // encode the child xpub
+func (r *ExtendedGroupElement) Add(a, b *ExtendedGroupElement) *ExtendedGroupElement {
+	var q CachedGroupElement
+	var c CompletedGroupElement
+	b.ToCached(&q)
+	geAdd(&c, a, &q)
+	c.ToExtended(r)
+	return r
+}
+
 func geSub(r *CompletedGroupElement, p *ExtendedGroupElement, q *CachedGroupElement) {
 	var t0 FieldElement
 
