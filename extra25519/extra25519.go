@@ -42,6 +42,9 @@ func edwardsToMontgomeryX(outX, y *edwards25519.FieldElement) {
 
 // PublicKeyToCurve25519 converts an Ed25519 public key into the curve25519
 // public key that would be generated from the same private key.
+//
+// Note that the Ed25519 identity element and other low-order points map to the
+// all-zero (low-order) Curve25519 output.
 func PublicKeyToCurve25519(curve25519Public *[32]byte, publicKey *[32]byte) bool {
 	var A edwards25519.ExtendedGroupElement
 	if !A.FromBytes(publicKey) {
@@ -70,7 +73,10 @@ var halfQMinus1Bytes = [32]byte{
 	0xf6, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x3f,
 }
 
-// feBytesLess returns one if a <= b and zero otherwise.
+// feBytesLE returns one if a < b (strictly) and zero otherwise. Despite the
+// historical name, the constant-time loop below returns 0 when a == b; this
+// matches the agl/ref10 reference implementation. The boundary (a == b) value
+// has negligible probability in practice.
 func feBytesLE(a, b *[32]byte) int64 {
 	equalSoFar := int64(-1)
 	greater := int64(0)
@@ -90,6 +96,14 @@ func feBytesLE(a, b *[32]byte) int64 {
 // a uniform representative for that public key. Note that this function will
 // fail and return false for about half of private keys.
 // See http://elligator.cr.yp.to/elligator-20130828.pdf.
+//
+// High-bit contract: the representative produced here only occupies bits
+// 0..253 (its magnitude is at most (q-1)/2 = 2^254-10), so bits 254 and 255 of
+// representative[31] are always 0. The representative is therefore NOT
+// uniformly random over 32 bytes as emitted. For wire-indistinguishability the
+// caller MUST fill bits 254 and 255 with uniform random bits before
+// transmitting the representative. RepresentativeToPublicKey clears those two
+// bits again before decoding, so the round-trip is unaffected by their value.
 func ScalarBaseMult(publicKey, representative, privateKey *[32]byte) bool {
 	var maskedPrivateKey [32]byte
 	copy(maskedPrivateKey[:], privateKey[:])
@@ -314,9 +328,22 @@ func chi(out, z *edwards25519.FieldElement) {
 // RepresentativeToPublicKey converts a uniform representative value for a
 // curve25519 public key, as produced by ScalarBaseMult, to a curve25519 public
 // key.
+//
+// High-bit contract: only bits 0..253 of the representative carry information.
+// Bits 254 and 255 of representative[31] are ignored: they are cleared on a
+// local copy before decoding, so a caller that randomized those two bits for
+// wire-indistinguishability (see ScalarBaseMult) still recovers the correct
+// public key. The caller's input array is not modified.
 func RepresentativeToPublicKey(publicKey, representative *[32]byte) {
 	var rr2, v, e edwards25519.FieldElement
-	edwards25519.FeFromBytes(&rr2, representative)
+
+	// Operate on a local copy with both high bits (254 and 255) cleared.
+	// FeFromBytes only masks bit 255, but genuine representatives never set
+	// bit 254, so it must be cleared here for correct decoding.
+	var masked [32]byte
+	masked = *representative
+	masked[31] &= 0x3f // clear bits 254 and 255
+	edwards25519.FeFromBytes(&rr2, &masked)
 
 	edwards25519.FeSquare2(&rr2, &rr2)
 	rr2[0]++
